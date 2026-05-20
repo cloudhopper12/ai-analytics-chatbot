@@ -1,65 +1,241 @@
-# AI Analytics Chatbot MVP
+# AI Analytics Chatbot
 
-One-page analytics workspace with chat, SQL approval, Postgres-backed e-commerce data, and a persistent dashboard.
+AI Analytics Chatbot is a local-first analytics workspace where a user can ask business questions in a chat interface, review the generated SQL, approve the query, and save the resulting chart or table to a persistent dashboard.
 
-The intended dev host is `seba@192.168.64.5`, with the project at:
+The current MVP uses a deterministic mock agent instead of a live LLM provider. That means the app works without an API key while still demonstrating the full product flow: chat, SQL preview, approval, Postgres query execution, chart rendering, and dashboard persistence.
 
-```bash
-/home/seba/ai-analytics-chatbot
-```
+## What It Does
 
-## Current Network Blocker
+- Provides a one-page web app with chat and dashboard side by side.
+- Accepts natural-language e-commerce analytics questions.
+- Generates a SQL preview for supported question types.
+- Requires the user to approve SQL before it runs.
+- Executes approved read-only SQL against Postgres.
+- Renders results as charts or tables.
+- Lets users save chat results to a persistent dashboard.
+- Reloads saved dashboard widgets whenever the webpage opens.
 
-This Codex session cannot currently reach the dev host:
-
-```bash
-ssh seba@192.168.64.5
-# ssh: connect to host 192.168.64.5 port 22: No route to host
-```
-
-Once SSH routing is fixed, copy or mount this project to `/home/seba/ai-analytics-chatbot` and run the setup commands below on the remote machine.
-
-If you mount the remote home directory on the MacBook, place this folder at:
-
-```text
-/home/seba/ai-analytics-chatbot
-```
-
-If SSH starts working, a direct copy option is:
-
-```bash
-rsync -av --exclude node_modules --exclude .venv ./ seba@192.168.64.5:/home/seba/ai-analytics-chatbot/
-```
-
-## Remote Setup
-
-```bash
-cd /home/seba/ai-analytics-chatbot
-chmod +x scripts/*.sh
-./scripts/bootstrap_remote_ubuntu.sh
-./scripts/setup_database.sh
-./scripts/install_deps.sh
-./scripts/run_remote_dev.sh
-```
-
-Then open this from the MacBook:
-
-```text
-http://192.168.64.5:3000
-```
-
-The frontend talks to FastAPI at:
-
-```text
-http://192.168.64.5:8000
-```
-
-## Useful Questions To Try
+Useful example questions:
 
 - Show monthly revenue.
 - What are the top products by revenue?
 - Revenue by region.
 - Which campaigns are converting?
 - Which products need inventory attention?
+- Show monthly gross margin.
 
-The MVP uses a deterministic mock agent. It generates SQL previews, waits for approval, then runs read-only queries against Postgres.
+## Architecture
+
+```text
+apps/web        Next.js + TypeScript frontend
+services/api    FastAPI backend, mock agent, SQL guardrails, dashboard API
+database        Postgres schema and deterministic e-commerce seed data
+scripts         Setup, install, run, and smoke-test helpers
+```
+
+Runtime flow:
+
+```text
+User question
+-> Next.js sends POST /chat
+-> FastAPI mock agent returns SQL preview and chart spec
+-> User approves SQL in the UI
+-> FastAPI validates and runs read-only SQL
+-> UI renders chart/table preview
+-> User clicks Add to dashboard
+-> FastAPI saves dashboard widget in Postgres
+-> Dashboard reloads saved widgets on future visits
+```
+
+## Prerequisites
+
+Recommended development environment:
+
+- Ubuntu/Debian Linux
+- Node.js 18 or newer
+- npm
+- Python 3.12 or newer
+- PostgreSQL 16 or newer
+- Git
+- tmux, optional but useful for running both dev servers
+
+The included setup scripts are written for Ubuntu/Debian. Other operating systems can run the project too, but you may need to install dependencies and initialize Postgres manually.
+
+## Quick Start
+
+Clone the repository:
+
+```bash
+git clone https://github.com/cloudhopper12/ai-analytics-chatbot.git
+cd ai-analytics-chatbot
+```
+
+On Ubuntu/Debian, install system dependencies:
+
+```bash
+chmod +x scripts/*.sh
+./scripts/bootstrap_remote_ubuntu.sh
+```
+
+Create and seed the database:
+
+```bash
+./scripts/setup_database.sh
+```
+
+Install application dependencies:
+
+```bash
+./scripts/install_deps.sh
+```
+
+Start the API and web app for local development:
+
+```bash
+REMOTE_HOST=localhost ./scripts/run_remote_dev.sh
+```
+
+Open the web app:
+
+```text
+http://localhost:3000
+```
+
+The API runs on:
+
+```text
+http://localhost:8000
+```
+
+## Running On A Remote Machine Or VM
+
+If you run the app on a remote host or VM and want to access it from another computer, start the dev servers with the host IP:
+
+```bash
+REMOTE_HOST=<server-ip> ./scripts/run_remote_dev.sh
+```
+
+Then open:
+
+```text
+http://<server-ip>:3000
+```
+
+The frontend will call the API at:
+
+```text
+http://<server-ip>:8000
+```
+
+Make sure ports `3000` and `8000` are reachable from your browser machine.
+
+## Configuration
+
+The backend reads these environment variables:
+
+```bash
+APP_DATABASE_URL=postgresql://analytics_app:analytics_app_password@localhost:5432/analytics_chatbot
+ANALYTICS_DATABASE_URL=postgresql://analytics_readonly:analytics_readonly_password@localhost:5432/analytics_chatbot
+WEB_ORIGIN=http://localhost:3000
+MAX_QUERY_ROWS=500
+STATEMENT_TIMEOUT_MS=5000
+```
+
+The frontend reads:
+
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+Example env files are included:
+
+```text
+services/api/.env.example
+apps/web/.env.local.example
+```
+
+The run script derives `WEB_ORIGIN` and `NEXT_PUBLIC_API_URL` from `REMOTE_HOST` unless you override them explicitly.
+
+## Database
+
+The setup script creates local development roles and a database:
+
+- Database: `analytics_chatbot`
+- App role: `analytics_app`
+- Read-only analytics role: `analytics_readonly`
+
+The default passwords are intended for local development only. Change them before using the project in any shared or production-like environment.
+
+The analytics schema includes seeded e-commerce data for:
+
+- categories
+- products
+- customers
+- orders
+- order items
+- payments
+- campaigns
+- web sessions
+- inventory snapshots
+
+The app schema stores:
+
+- chat sessions
+- pending SQL approvals
+- saved dashboard widgets
+
+To reset the seeded analytics data:
+
+```bash
+./scripts/setup_database.sh
+```
+
+For manual Postgres setup, create the database roles first, then apply:
+
+```bash
+psql -d analytics_chatbot -f database/schema.sql
+psql -d analytics_chatbot -f database/seed.sql
+```
+
+## Development Commands
+
+Run the backend tests:
+
+```bash
+cd services/api
+PYTHONPATH=. .venv/bin/python -m pytest tests -q
+```
+
+Build the frontend:
+
+```bash
+npm --workspace apps/web run build
+```
+
+Run only the API:
+
+```bash
+cd services/api
+source .venv/bin/activate
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+Run only the web app:
+
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev:web
+```
+
+Run a smoke test against a remote host:
+
+```bash
+REMOTE_HOST=<server-ip> ./scripts/remote_smoke_test.sh
+```
+
+## Notes
+
+- The current agent is intentionally deterministic. It maps supported question types to predefined SQL templates in `services/api/app/mock_agent.py`.
+- SQL approval is required before any analytics query runs.
+- Query execution uses a read-only Postgres role and a statement timeout.
+- Saved dashboard widgets store result snapshots, so the dashboard can reload without rerunning SQL.
+- A future version can replace the mock agent with an LLM-backed agent while keeping the existing SQL approval and dashboard flow.
