@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+protected_branch="main"
+current_branch="$(git symbolic-ref --quiet --short HEAD || true)"
+
+if [ "${current_branch}" = "${protected_branch}" ]; then
+  cat >&2 <<MSG
+Direct pushes from main are blocked for this repository.
+
+Create a feature branch, push that branch, and open a pull request for manual review.
+MSG
+  exit 1
+fi
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "${remote_ref}" = "refs/heads/${protected_branch}" ]; then
+    cat >&2 <<MSG
+Direct pushes to ${protected_branch} are blocked for this repository.
+
+Push a feature branch and merge only after manual review.
+MSG
+    exit 1
+  fi
+done
