@@ -108,15 +108,19 @@ CREATE TABLE IF NOT EXISTS app.dashboard_widgets (
   chart_spec JSONB NOT NULL,
   columns JSONB NOT NULL,
   rows JSONB NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  deleted_at TIMESTAMPTZ
 );
+
+ALTER TABLE app.dashboard_widgets
+  ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS idx_orders_order_date ON analytics.orders(order_date);
 CREATE INDEX IF NOT EXISTS idx_orders_customer_id ON analytics.orders(customer_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON analytics.order_items(order_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_product_id ON analytics.order_items(product_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_campaign_date ON analytics.web_sessions(campaign_id, session_date);
-CREATE INDEX IF NOT EXISTS idx_dashboard_widgets_created ON app.dashboard_widgets(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_dashboard_widgets_created ON app.dashboard_widgets(created_at DESC) WHERE deleted_at IS NULL;
 
 GRANT USAGE ON SCHEMA analytics TO analytics_readonly;
 GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO analytics_readonly;
@@ -124,7 +128,9 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA analytics GRANT SELECT ON TABLES TO analytics
 
 GRANT USAGE ON SCHEMA analytics, app TO analytics_app;
 GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO analytics_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA app TO analytics_app;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA analytics, app TO analytics_app;
-ALTER DEFAULT PRIVILEGES IN SCHEMA app GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO analytics_app;
-ALTER DEFAULT PRIVILEGES IN SCHEMA app GRANT USAGE, SELECT ON SEQUENCES TO analytics_app;
+REVOKE ALL ON ALL TABLES IN SCHEMA app FROM analytics_app;
+GRANT SELECT, INSERT ON app.chat_sessions TO analytics_app;
+GRANT SELECT, INSERT ON app.pending_queries TO analytics_app;
+GRANT UPDATE (executed_at) ON app.pending_queries TO analytics_app;
+GRANT SELECT, INSERT ON app.dashboard_widgets TO analytics_app;
+GRANT UPDATE (deleted_at) ON app.dashboard_widgets TO analytics_app;

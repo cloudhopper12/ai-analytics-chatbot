@@ -134,8 +134,8 @@ Make sure ports `3000` and `8000` are reachable from your browser machine.
 The backend reads these environment variables:
 
 ```bash
-APP_DATABASE_URL=postgresql://analytics_app:analytics_app_password@localhost:5432/analytics_chatbot
-ANALYTICS_DATABASE_URL=postgresql://analytics_readonly:analytics_readonly_password@localhost:5432/analytics_chatbot
+APP_DATABASE_URL=postgresql://analytics_app:<generated-app-password>@localhost:5432/analytics_chatbot
+ANALYTICS_DATABASE_URL=postgresql://analytics_readonly:<generated-readonly-password>@localhost:5432/analytics_chatbot
 WEB_ORIGIN=http://localhost:3000
 MAX_QUERY_ROWS=500
 STATEMENT_TIMEOUT_MS=5000
@@ -158,13 +158,13 @@ The run script derives `WEB_ORIGIN` and `NEXT_PUBLIC_API_URL` from `REMOTE_HOST`
 
 ## Database
 
-The setup script creates local development roles and a database:
+The setup script creates local development roles, generates local-only passwords, writes ignored env files, and creates a database:
 
 - Database: `analytics_chatbot`
 - App role: `analytics_app`
 - Read-only analytics role: `analytics_readonly`
 
-The default passwords are intended for local development only. Change them before using the project in any shared or production-like environment.
+Generated local passwords are written to ignored env files. Do not commit real credentials, and rotate them before using the project in any shared or production-like environment.
 
 The analytics schema includes seeded e-commerce data for:
 
@@ -231,6 +231,14 @@ Run a smoke test against a remote host:
 ```bash
 REMOTE_HOST=<server-ip> ./scripts/remote_smoke_test.sh
 ```
+
+## Safety And Access Controls
+
+- Generated SQL must pass read-only validation and user approval before execution.
+- The analytics query role only has `SELECT` access to analytics tables.
+- The app role has limited app-schema permissions and no broad table-level delete grant.
+- Dashboard removals are soft deletes (`deleted_at`) and require a browser confirmation.
+- For GitHub, prefer pull requests and branch protection. Keep deploy keys read-only unless a controlled automation needs temporary write access.
 
 ## Notes
 

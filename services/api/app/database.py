@@ -30,6 +30,8 @@ def to_jsonable(value: Any) -> Any:
 
 @contextmanager
 def app_connection():
+    if not APP_DATABASE_URL:
+        raise RuntimeError("APP_DATABASE_URL is required. Run scripts/setup_database.sh or set services/api/.env.")
     with psycopg.connect(APP_DATABASE_URL, row_factory=dict_row) as conn:
         yield conn
 
@@ -49,10 +51,11 @@ def app_fetch_all(sql: str, params: Sequence[Any] | None = None) -> list[dict[st
             return to_jsonable(cur.fetchall())
 
 
-def app_execute(sql: str, params: Sequence[Any] | None = None) -> None:
+def app_execute(sql: str, params: Sequence[Any] | None = None) -> int:
     with app_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, params or ())
+            return cur.rowcount
 
 
 def app_insert_one(sql: str, params: Sequence[Any] | None = None) -> dict[str, Any]:
@@ -70,6 +73,8 @@ def jsonb(value: Any) -> Jsonb:
 
 
 def execute_readonly_query(sql: str, params: Iterable[Any] | None = None) -> tuple[list[str], list[dict[str, Any]]]:
+    if not ANALYTICS_DATABASE_URL:
+        raise RuntimeError("ANALYTICS_DATABASE_URL is required. Run scripts/setup_database.sh or set services/api/.env.")
     with psycopg.connect(ANALYTICS_DATABASE_URL, row_factory=dict_row) as conn:
         with conn.transaction():
             with conn.cursor() as cur:

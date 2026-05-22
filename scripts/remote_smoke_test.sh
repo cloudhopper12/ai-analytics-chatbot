@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REMOTE_HOST="${REMOTE_HOST:-192.168.64.5}"
+REMOTE_HOST="${REMOTE_HOST:-localhost}"
 
 curl -fsS "http://${REMOTE_HOST}:8000/health"
 echo

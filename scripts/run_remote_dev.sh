@@ -3,10 +3,26 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SESSION_NAME="${SESSION_NAME:-ai-analytics-chatbot}"
-REMOTE_HOST="${REMOTE_HOST:-192.168.64.5}"
+REMOTE_HOST="${REMOTE_HOST:-localhost}"
+API_ENV_FILE="${ROOT_DIR}/services/api/.env"
+WEB_ENV_FILE="${ROOT_DIR}/apps/web/.env.local"
 
-APP_DATABASE_URL="${APP_DATABASE_URL:-postgresql://analytics_app:analytics_app_password@localhost:5432/analytics_chatbot}"
-ANALYTICS_DATABASE_URL="${ANALYTICS_DATABASE_URL:-postgresql://analytics_readonly:analytics_readonly_password@localhost:5432/analytics_chatbot}"
+if [ -f "${API_ENV_FILE}" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "${API_ENV_FILE}"
+  set +a
+fi
+
+if [ -f "${WEB_ENV_FILE}" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "${WEB_ENV_FILE}"
+  set +a
+fi
+
+APP_DATABASE_URL="${APP_DATABASE_URL:?APP_DATABASE_URL is required. Run scripts/setup_database.sh or set services/api/.env.}"
+ANALYTICS_DATABASE_URL="${ANALYTICS_DATABASE_URL:?ANALYTICS_DATABASE_URL is required. Run scripts/setup_database.sh or set services/api/.env.}"
 WEB_ORIGIN="${WEB_ORIGIN:-http://${REMOTE_HOST}:3000}"
 NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-http://${REMOTE_HOST}:8000}"
 

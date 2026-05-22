@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { BarChart3, CheckCircle2, Database, Loader2, Plus, Play, Send, Trash2 } from "lucide-react";
 import { ChartSpec, ResultChart } from "../components/ResultChart";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://192.168.64.5:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 type ChatResponse = {
   sessionId: string;
@@ -169,8 +169,14 @@ export default function Home() {
   }
 
   async function deleteWidget(widgetId: string) {
+    const widget = dashboard.find((item) => item.id === widgetId);
+    const confirmed = window.confirm(`Remove ${widget?.title ?? "this widget"} from the dashboard?`);
+    if (!confirmed) {
+      return;
+    }
+
     const previous = dashboard;
-    setDashboard((current) => current.filter((widget) => widget.id !== widgetId));
+    setDashboard((current) => current.filter((item) => item.id !== widgetId));
 
     try {
       const response = await fetch(`${API_URL}/dashboard/widgets/${widgetId}`, { method: "DELETE" });
@@ -179,7 +185,7 @@ export default function Home() {
       }
     } catch (error) {
       setDashboard(previous);
-      setPageError(error instanceof Error ? error.message : "Unable to delete dashboard widget.");
+      setPageError(error instanceof Error ? error.message : "Unable to remove dashboard widget.");
     }
   }
 

@@ -17,8 +17,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[WEB_ORIGIN, "http://localhost:3000"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type"],
 )
 
 
@@ -158,6 +158,7 @@ def get_dashboard() -> DashboardResponse:
           created_at
         FROM app.dashboard_widgets
         WHERE dashboard_name = 'My Dashboard'
+          AND deleted_at IS NULL
         ORDER BY created_at DESC
         """
     )
@@ -217,13 +218,18 @@ def save_dashboard_widget(request: SaveWidgetRequest) -> DashboardWidget:
 
 @app.delete("/dashboard/widgets/{widget_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_dashboard_widget(widget_id: str) -> Response:
-    app_execute(
+    affected_rows = app_execute(
         """
-        DELETE FROM app.dashboard_widgets
-        WHERE id = %s AND dashboard_name = 'My Dashboard'
+        UPDATE app.dashboard_widgets
+        SET deleted_at = now()
+        WHERE id = %s
+          AND dashboard_name = 'My Dashboard'
+          AND deleted_at IS NULL
         """,
         (widget_id,),
     )
+    if affected_rows == 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dashboard widget not found.")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
