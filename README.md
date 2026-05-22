@@ -247,3 +247,22 @@ REMOTE_HOST=<server-ip> ./scripts/remote_smoke_test.sh
 - Query execution uses a read-only Postgres role and a statement timeout.
 - Saved dashboard widgets store result snapshots, so the dashboard can reload without rerunning SQL.
 - A future version can replace the mock agent with an LLM-backed agent while keeping the existing SQL approval and dashboard flow.
+
+## Contribution Workflow
+
+Future Codex work must not happen directly on `main`.
+
+Required workflow:
+
+1. Start from an up-to-date `main` branch.
+2. Create a feature branch, for example `codex/<short-change-name>`.
+3. Commit changes only on that feature branch.
+4. Push only the feature branch.
+5. Open a pull request for manual review.
+6. Merge to `main` only after the user reviews and approves the change.
+
+This repository includes a local `pre-push` hook template in `.githooks/pre-push` that blocks direct pushes from or to `main`. Enable it after cloning with:
+
+```bash
+git config core.hooksPath .githooks
+```
